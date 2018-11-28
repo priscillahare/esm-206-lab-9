@@ -91,7 +91,7 @@ by_sqft <- ggplot(homes_sub, aes(x = SqFt, y = Price)) +
 
 by_sqft
 
-# Observations here: Does relationship appear ~ linear? Anything else we can pick out re: trends, outliers, etc.? What is the general trend? Any outliers? Is there reason enough for us to omit it?
+ # Observations here: Does relationship appear ~ linear? Anything else we can pick out re: trends, outliers, etc.? What is the general trend? Any outliers? Is there reason enough for us to omit it?
 
 ```
 
@@ -112,18 +112,27 @@ Use summary() to view the model output and statistics.
 
 # a. Saturated model: 
 
+homes_lm1 <- lm(Price ~ City + Bedrooms + Bathrooms + SqFt + PricePerSqFt + Status, data = homes_sub)
 
 # b. Model summary:
 
+summary(homes_lm1)
+
+#looking at summary model seems incorrect. Bedrooms has neg coeffcient showing decrease in price with increase in bedrooms (doesnt seem right). Also price decreases when you switch from forclusre(reference) to regular (also seems wrong)
+
 ```
 
-The next model: Exclude price per square foot, and bedrooms/bathrooms (since these are largely explained by square footage...)
+The next model: Exclude price per square foot since uses the response variable to calculate the predictor variable, and bedrooms/bathrooms (since these are largely explained by square footage...)
 
 ```{r subset}
 
 # a. Updated model with variables City, SqFt, and Status:
 
+homes_lm2 <- lm(Price ~ City + SqFt + Status, data = homes_sub)
+
 # b. Model summary:
+
+summary(homes_lm2)
 
 ```
 
@@ -133,19 +142,27 @@ Wait...but what if I wanted everything to be with respect to a Regular sale stat
 
 # a. Set Status to class 'factor'
 
+homes_sub$Status <- factor(homes_sub$Status)
 
 # b. Check to ensure it's a factor now
 
+# class(homes_sub$Status)
 
 # c. Check levels:
 
+# levels(homes_sub$Status)
 
 # d. Reassign reference level of "Status" to "Regular":
 
+# fct_relevel() in forcats
+
+homes_sub$Status <- fct_relevel(homes_sub$Status, "Regular")
 
 # e. Now run the regression again - same equation, but now the reference level is different (Status = Regular): 
 
+homes_lm3 <- lm(formula = Price ~ City + SqFt + Status, data = homes_sub)
 
+summary(homes_lm3)
 
 ```
 
@@ -162,6 +179,8 @@ Then we can evaluate model diagnostics using the plot() function:
 
 # a. Model diagnostics:
 
+plot(homes_lm3)
+
 ```
 
 ###6. Model comparison by Akaike Information Criterion
@@ -172,7 +191,12 @@ The AIC is a quantitative metric for model "optimization" that balances complexi
 
 # a. AIC values for each model
 
+full_aic <- AIC(homes_lm1) # it is only useful to report AIC when preseting or comparing multiple models
+final_aic <- AIC(homes_lm3)
+
 # Answer: which would you pick? 
+
+# if you didnt consider anything else then you would choose the first model based off AIC alone but using judgement, the final model is better conceptually
 
 ```
 
@@ -182,7 +206,7 @@ The AIC is a quantitative metric for model "optimization" that balances complexi
 
 # a. Prepare a nice regression table:
 
-
+stargazer(homes_lm1, homes_lm3, type = "html")
 
 # Note: If you want to work with this in Word, save to html, open, copy and paste into Word. 
 
@@ -234,9 +258,11 @@ Make predictions for the new data using predict():
 
 # a. Make predictions using the new data frame:
 
+price_predict <- predict(homes_lm3, newdata = df_new, se.fit = TRUE, interval = "confidence")
+
 # b. Bind predictions to the data to make it actually useful:
 
-
+predict_df <- data.frame(df_new, price_predict)
 
 ```
 
@@ -246,6 +272,12 @@ Then visualize it!
 
 # Create a line graph with square footage on the x-axis, predicted price on y-axis, with color dependent on City and facet_wrapped by sale status (follow along):
 
+predict_graph <- ggplot(predict_df, aes(x = SqFt, y = fit.fit)) + 
+  geom_line(aes(color = City)) +
+  geom_point(data = homes_sub, aes(x = SqFt, y = Price), alpha = 0.5) + #add original data set to predictions graph
+  facet_wrap(~Status)
+
+predict_graph
 
 ```
 
